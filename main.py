@@ -42,6 +42,34 @@ class BubbleSort(Algoritmo):
             if not intercambiado: break
         return lista_o
 
+class QuickSort(Algoritmo):
+    def ordenar(self, lista: List[int]) -> List[int]:
+        lista_o = lista.copy()
+        self._pasos = [] # Reiniciar pasos
+        self.registrar_paso(lista_o.copy())
+        self._quicksort(lista_o, 0, len(lista_o) - 1)
+        return lista_o
+
+    def _quicksort(self, lista: List[int], low: int, high: int) -> None:
+        if low < high:
+            pi = self._partition(lista, low, high)
+            self._quicksort(lista, low, pi - 1)
+            self._quicksort(lista, pi + 1, high)
+
+    def _partition(self, lista: List[int], low: int, high: int) -> int:
+        pivot = lista[high]
+        i = low - 1
+        for j in range(low, high):
+            if lista[j] < pivot:
+                i += 1
+                if i != j:
+                    lista[i], lista[j] = lista[j], lista[i]
+                    self.registrar_paso(lista.copy())
+        if i + 1 != high:
+            lista[i + 1], lista[high] = lista[high], lista[i + 1]
+            self.registrar_paso(lista.copy())
+        return i + 1
+
 # --- INTERFAZ GRÁFICA ---
 
 class AppAlgoritmos:
@@ -52,7 +80,7 @@ class AppAlgoritmos:
         self.root.config(bg="#f0f0f0")
 
         self.lista_actual = []
-        self.algoritmos = {"Bubble Sort": BubbleSort()}
+        self.algoritmos = {"Bubble Sort": BubbleSort(), "Quick Sort": QuickSort()}
 
         self._crear_interfaz()
 
