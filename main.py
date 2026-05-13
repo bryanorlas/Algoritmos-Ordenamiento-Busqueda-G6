@@ -8,7 +8,7 @@ class Algoritmo(ABC):
     Proporciona la estructura para implementar métodos de ordenamiento y registrar sus pasos.
     """
     def __init__(self) -> None:
-        self._pasos: List[str] = []
+        self._pasos: List[List[int]] = []
 
     @abstractmethod
     def ordenar(self, lista: List[int]) -> List[int]:
@@ -21,19 +21,19 @@ class Algoritmo(ABC):
         """
         pass
 
-    def obtener_pasos(self) -> List[str]:
+    def obtener_pasos(self) -> List[List[int]]:
         """
         Retorna la lista de pasos registrados durante la ejecución del algoritmo.
         
-        :return: Lista de cadenas de texto describiendo cada paso.
+        :return: Lista de estados de la lista en cada paso.
         """
         return self._pasos
 
-    def registrar_paso(self, paso: str) -> None:
+    def registrar_paso(self, paso: List[int]) -> None:
         """
         Agrega un paso a la lista de pasos. (Método de apoyo para encapsulamiento)
         
-        :param paso: Descripción del paso a registrar.
+        :param paso: Estado de la lista a registrar.
         """
         self._pasos.append(paso)
 
@@ -64,32 +64,32 @@ class GestorDatos:
 # =====================================================================
 # Ejemplo de uso e implementación concreta para probar la estructura
 # =====================================================================
-class Burbuja(Algoritmo):
+class BubbleSort(Algoritmo):
     """
-    Implementación del algoritmo de ordenamiento de Burbuja como demostración.
+    Implementación del algoritmo de ordenamiento BubbleSort.
     """
     def ordenar(self, lista: List[int]) -> List[int]:
         n = len(lista)
         # Trabajamos sobre una copia para no mutar la lista original
         lista_ordenada = lista.copy()
         
-        self.registrar_paso(f"Iniciando ordenamiento Burbuja con la lista: {lista_ordenada}")
+        # Guardamos el estado inicial
+        self.registrar_paso(lista_ordenada.copy())
         
         for i in range(n):
             intercambiado = False
             for j in range(0, n - i - 1):
-                self.registrar_paso(f"Comparando {lista_ordenada[j]} y {lista_ordenada[j+1]}")
                 if lista_ordenada[j] > lista_ordenada[j + 1]:
-                    # Intercambio
+                    # Intercambio manual
                     lista_ordenada[j], lista_ordenada[j + 1] = lista_ordenada[j + 1], lista_ordenada[j]
                     intercambiado = True
-                    self.registrar_paso(f"Intercambiados: {lista_ordenada}")
+                    # Guardar una copia del estado actual de la lista
+                    self.registrar_paso(lista_ordenada.copy())
             
             # Optimización: si no hubo intercambios en la pasada, ya está ordenado
             if not intercambiado:
                 break
                 
-        self.registrar_paso("Ordenamiento finalizado.")
         return lista_ordenada
 
 
@@ -100,15 +100,15 @@ if __name__ == '__main__':
         print(f"Lista original: {lista_desordenada}\n")
         
         # 2. Instanciar un algoritmo
-        algoritmo_burbuja = Burbuja()
+        algoritmo = BubbleSort()
         
         # 3. Ordenar la lista
-        lista_ordenada = algoritmo_burbuja.ordenar(lista_desordenada)
+        lista_ordenada = algoritmo.ordenar(lista_desordenada)
         
         # 4. Mostrar resultados
         print(f"Lista ordenada: {lista_ordenada}\n")
-        print("Pasos del algoritmo:")
-        for paso in algoritmo_burbuja.obtener_pasos():
+        print("Pasos del algoritmo (estados de la lista):")
+        for paso in algoritmo.obtener_pasos():
             print(f"- {paso}")
             
     except ValueError as e:
