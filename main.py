@@ -1,115 +1,130 @@
-from abc import ABC, abstractmethod
+import tkinter as tk
+from tkinter import ttk, messagebox
 import random
+from abc import ABC, abstractmethod
 from typing import List
 
+# --- LÓGICA DE ALGORITMOS ---
+
 class Algoritmo(ABC):
-    """
-    Clase abstracta base para los algoritmos de ordenamiento.
-    Proporciona la estructura para implementar métodos de ordenamiento y registrar sus pasos.
-    """
     def __init__(self) -> None:
         self._pasos: List[List[int]] = []
 
     @abstractmethod
     def ordenar(self, lista: List[int]) -> List[int]:
-        """
-        Método abstracto que debe ser implementado por cada algoritmo específico
-        para ordenar una lista de números.
-        
-        :param lista: Lista de enteros a ordenar.
-        :return: Lista de enteros ordenada.
-        """
         pass
 
     def obtener_pasos(self) -> List[List[int]]:
-        """
-        Retorna la lista de pasos registrados durante la ejecución del algoritmo.
-        
-        :return: Lista de estados de la lista en cada paso.
-        """
         return self._pasos
 
     def registrar_paso(self, paso: List[int]) -> None:
-        """
-        Agrega un paso a la lista de pasos. (Método de apoyo para encapsulamiento)
-        
-        :param paso: Estado de la lista a registrar.
-        """
         self._pasos.append(paso)
 
-
 class GestorDatos:
-    """
-    Clase encargada de la gestión y generación de datos para el explorador de algoritmos.
-    """
     @staticmethod
-    def generar_lista_aleatoria(tamano: int, limite_inferior: int = 0, limite_superior: int = 100) -> List[int]:
-        """
-        Genera una lista de números enteros aleatorios.
-        
-        :param tamano: Cantidad de elementos de la lista.
-        :param limite_inferior: Valor mínimo del rango (inclusivo).
-        :param limite_superior: Valor máximo del rango (inclusivo).
-        :return: Lista de enteros aleatorios.
-        :raises ValueError: Si los parámetros proporcionados no son válidos.
-        """
-        if tamano < 0:
-            raise ValueError("El tamaño de la lista no puede ser negativo.")
-        if limite_inferior > limite_superior:
-            raise ValueError("El límite inferior no puede ser mayor que el límite superior.")
-            
-        return [random.randint(limite_inferior, limite_superior) for _ in range(tamano)]
+    def generar_lista_aleatoria(tamano: int, bajo: int = 1, alto: int = 100) -> List[int]:
+        if tamano <= 0: raise ValueError("Tamaño inválido")
+        return [random.randint(bajo, alto) for _ in range(tamano)]
 
-
-# =====================================================================
-# Ejemplo de uso e implementación concreta para probar la estructura
-# =====================================================================
 class BubbleSort(Algoritmo):
-    """
-    Implementación del algoritmo de ordenamiento BubbleSort.
-    """
     def ordenar(self, lista: List[int]) -> List[int]:
         n = len(lista)
-        # Trabajamos sobre una copia para no mutar la lista original
-        lista_ordenada = lista.copy()
-        
-        # Guardamos el estado inicial
-        self.registrar_paso(lista_ordenada.copy())
-        
+        lista_o = lista.copy()
+        self._pasos = [] # Reiniciar pasos
+        self.registrar_paso(lista_o.copy())
         for i in range(n):
             intercambiado = False
             for j in range(0, n - i - 1):
-                if lista_ordenada[j] > lista_ordenada[j + 1]:
-                    # Intercambio manual
-                    lista_ordenada[j], lista_ordenada[j + 1] = lista_ordenada[j + 1], lista_ordenada[j]
+                if lista_o[j] > lista_o[j + 1]:
+                    lista_o[j], lista_o[j + 1] = lista_o[j + 1], lista_o[j]
                     intercambiado = True
-                    # Guardar una copia del estado actual de la lista
-                    self.registrar_paso(lista_ordenada.copy())
-            
-            # Optimización: si no hubo intercambios en la pasada, ya está ordenado
-            if not intercambiado:
-                break
-                
-        return lista_ordenada
+                    self.registrar_paso(lista_o.copy())
+            if not intercambiado: break
+        return lista_o
 
+# --- INTERFAZ GRÁFICA ---
 
-if __name__ == '__main__':
-    # 1. Generar datos usando el GestorDatos
-    try:
-        lista_desordenada = GestorDatos.generar_lista_aleatoria(tamano=5, limite_inferior=1, limite_superior=50)
-        print(f"Lista original: {lista_desordenada}\n")
+class AppAlgoritmos:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Explorador de Algoritmos - Grupo 6")
+        self.root.geometry("800x600")
+        self.root.config(bg="#f0f0f0")
+
+        self.lista_actual = []
+        self.algoritmos = {"Bubble Sort": BubbleSort()}
+
+        self._crear_interfaz()
+
+    def _crear_interfaz(self):
+        # Panel Superior (Controles)
+        panel_control = tk.Frame(self.root, pady=10, bg="#dcdcdc")
+        panel_control.pack(fill="x")
+
+        tk.Label(panel_control, text="Algoritmo:", bg="#dcdcdc").pack(side="left", padx=5)
+        self.combo_algoritmo = ttk.Combobox(panel_control, values=list(self.algoritmos.keys()))
+        self.combo_algoritmo.pack(side="left", padx=5)
+        self.combo_algoritmo.current(0)
+
+        btn_generar = tk.Button(panel_control, text="Generar Datos", command=self.generar_datos)
+        btn_generar.pack(side="left", padx=5)
+
+        btn_iniciar = tk.Button(panel_control, text="Iniciar Ordenamiento", command=self.ejecutar_animacion, bg="#4caf50", fg="white")
+        btn_iniciar.pack(side="left", padx=5)
+
+        # Área de Visualización (Canvas)
+        self.canvas = tk.Canvas(self.root, bg="white", height=400)
+        self.canvas.pack(fill="both", expand=True, padx=20, pady=20)
+
+    def generar_datos(self):
+        try:
+            self.lista_actual = GestorDatos.generar_lista_aleatoria(tamano=20)
+            self.dibujar_lista(self.lista_actual)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    def dibujar_lista(self, lista, color_barras="skyblue"):
+        self.canvas.delete("all")
+        if not lista: return
+
+        c_width = self.canvas.winfo_width()
+        c_height = self.canvas.winfo_height()
+        ancho_barra = c_width / len(lista)
         
-        # 2. Instanciar un algoritmo
-        algoritmo = BubbleSort()
+        # Normalizar altura para que quepa en el canvas
+        max_val = max(lista)
         
-        # 3. Ordenar la lista
-        lista_ordenada = algoritmo.ordenar(lista_desordenada)
+        for i, valor in enumerate(lista):
+            x0 = i * ancho_barra
+            y0 = c_height - (valor * (c_height / max_val) * 0.9) # 90% del alto
+            x1 = (i + 1) * ancho_barra
+            y1 = c_height
+            self.canvas.create_rectangle(x0, y0, x1, y1, fill=color_barras, outline="white")
+
+    def ejecutar_animacion(self):
+        nombre_alg = self.combo_algoritmo.get()
+        alg = self.algoritmos[nombre_alg]
         
-        # 4. Mostrar resultados
-        print(f"Lista ordenada: {lista_ordenada}\n")
-        print("Pasos del algoritmo (estados de la lista):")
-        for paso in algoritmo.obtener_pasos():
-            print(f"- {paso}")
-            
-    except ValueError as e:
-        print(f"Error de validación: {e}")
+        if not self.lista_actual:
+            messagebox.showwarning("Atención", "Primero genera datos")
+            return
+
+        # Obtener pasos
+        alg.ordenar(self.lista_actual)
+        pasos = alg.obtener_pasos()
+
+        # Función interna para animar paso a paso
+        def animar(idx):
+            if idx < len(pasos):
+                self.dibujar_lista(pasos[idx], color_barras="#ff9800")
+                self.root.after(100, lambda: animar(idx + 1)) # Velocidad: 100ms
+            else:
+                self.dibujar_lista(pasos[-1], color_barras="#4caf50")
+                messagebox.showinfo("Listo", "Ordenamiento completado")
+
+        animar(0)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AppAlgoritmos(root)
+    root.mainloop()
