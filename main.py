@@ -79,19 +79,23 @@ class AppAlgoritmos:
     def generar_datos(self):
         try:
             self.lista_actual = GestorDatos.generar_lista_aleatoria(tamano=20)
-            self.dibujar_lista(self.lista_actual)
+            self.dibujar_lista(self.lista_actual, color_barras=None)
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-    def dibujar_lista(self, lista, color_barras="skyblue"):
+    def dibujar_lista(self, lista, color_barras=None):
         self.canvas.delete("all")
         if not lista: return
 
+        self.canvas.update_idletasks() # Asegurar dimensiones actualizadas
         c_width = self.canvas.winfo_width()
         c_height = self.canvas.winfo_height()
-        ancho_barra = c_width / len(lista)
         
-        # Normalizar altura para que quepa en el canvas
+        # Fallback de tamaño inicial
+        if c_width <= 1: c_width = 760
+        if c_height <= 1: c_height = 400
+        
+        ancho_barra = c_width / len(lista)
         max_val = max(lista)
         
         for i, valor in enumerate(lista):
@@ -99,7 +103,14 @@ class AppAlgoritmos:
             y0 = c_height - (valor * (c_height / max_val) * 0.9) # 90% del alto
             x1 = (i + 1) * ancho_barra
             y1 = c_height
-            self.canvas.create_rectangle(x0, y0, x1, y1, fill=color_barras, outline="white")
+            
+            # Si no hay color especificado, usar diferentes colores (gradiente según el valor)
+            color = color_barras
+            if color is None:
+                intensidad = int((valor / max_val) * 200) + 55 # 55 a 255
+                color = f"#{intensidad:02x}90{255-intensidad:02x}" # Tono purpura/azulado a rojizo
+
+            self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="white")
 
     def ejecutar_animacion(self):
         nombre_alg = self.combo_algoritmo.get()
@@ -116,10 +127,11 @@ class AppAlgoritmos:
         # Función interna para animar paso a paso
         def animar(idx):
             if idx < len(pasos):
-                self.dibujar_lista(pasos[idx], color_barras="#ff9800")
-                self.root.after(100, lambda: animar(idx + 1)) # Velocidad: 100ms
+                # Dibujamos con diferentes colores en cada paso
+                self.dibujar_lista(pasos[idx], color_barras=None)
+                self.root.after(50, lambda: animar(idx + 1)) # Velocidad: 50ms de retraso (delay)
             else:
-                self.dibujar_lista(pasos[-1], color_barras="#4caf50")
+                self.dibujar_lista(pasos[-1], color_barras="#4caf50") # Verde al finalizar
                 messagebox.showinfo("Listo", "Ordenamiento completado")
 
         animar(0)
