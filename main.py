@@ -70,6 +70,26 @@ class QuickSort(Algoritmo):
             self.registrar_paso(lista.copy())
         return i + 1
 
+class InsertionSort(Algoritmo):
+    def ordenar(self, lista: List[int]) -> List[int]:
+        lista_o = lista.copy()
+        self._pasos = [] # Reiniciar pasos
+        self.registrar_paso(lista_o.copy())
+        
+        for i in range(1, len(lista_o)):
+            key = lista_o[i]
+            j = i - 1
+            
+            while j >= 0 and lista_o[j] > key:
+                lista_o[j + 1] = lista_o[j]
+                self.registrar_paso(lista_o.copy())
+                j -= 1
+                
+            lista_o[j + 1] = key
+            self.registrar_paso(lista_o.copy())
+            
+        return lista_o
+
 # --- INTERFAZ GRÁFICA ---
 
 class AppAlgoritmos:
@@ -80,7 +100,7 @@ class AppAlgoritmos:
         self.root.config(bg="#f0f0f0")
 
         self.lista_actual = []
-        self.algoritmos = {"Bubble Sort": BubbleSort(), "Quick Sort": QuickSort()}
+        self.algoritmos = {"Bubble Sort": BubbleSort(), "Quick Sort": QuickSort(), "Insertion Sort": InsertionSort()}
         self.comparaciones = 0
 
         self._crear_interfaz()
