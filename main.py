@@ -81,6 +81,7 @@ class AppAlgoritmos:
 
         self.lista_actual = []
         self.algoritmos = {"Bubble Sort": BubbleSort(), "Quick Sort": QuickSort()}
+        self.comparaciones = 0
 
         self._crear_interfaz()
 
@@ -90,19 +91,50 @@ class AppAlgoritmos:
         panel_control.pack(fill="x")
 
         tk.Label(panel_control, text="Algoritmo:", bg="#dcdcdc").pack(side="left", padx=5)
-        self.combo_algoritmo = ttk.Combobox(panel_control, values=list(self.algoritmos.keys()))
+        self.combo_algoritmo = ttk.Combobox(panel_control, values=list(self.algoritmos.keys()), width=12)
         self.combo_algoritmo.pack(side="left", padx=5)
         self.combo_algoritmo.current(0)
+
+        # Entrada de datos manual
+        tk.Label(panel_control, text="Datos (comas):", bg="#dcdcdc").pack(side="left", padx=2)
+        self.entry_datos = tk.Entry(panel_control, width=15)
+        self.entry_datos.pack(side="left", padx=2)
+        
+        btn_cargar = tk.Button(panel_control, text="Cargar Datos", command=self.cargar_datos_manuales)
+        btn_cargar.pack(side="left", padx=5)
 
         btn_generar = tk.Button(panel_control, text="Generar Datos", command=self.generar_datos)
         btn_generar.pack(side="left", padx=5)
 
-        btn_iniciar = tk.Button(panel_control, text="Iniciar Ordenamiento", command=self.ejecutar_animacion, bg="#4caf50", fg="white")
+        # Control de velocidad
+        tk.Label(panel_control, text="Velocidad (ms):", bg="#dcdcdc").pack(side="left", padx=2)
+        self.scale_velocidad = tk.Scale(panel_control, from_=10, to=1000, orient="horizontal", bg="#dcdcdc", resolution=10, length=100)
+        self.scale_velocidad.set(50)
+        self.scale_velocidad.pack(side="left", padx=2)
+
+        btn_iniciar = tk.Button(panel_control, text="Iniciar", command=self.ejecutar_animacion, bg="#4caf50", fg="white")
         btn_iniciar.pack(side="left", padx=5)
+
+        # Panel para etiquetas
+        panel_info = tk.Frame(self.root, bg="#f0f0f0")
+        panel_info.pack(fill="x", padx=20)
+        self.lbl_comparaciones = tk.Label(panel_info, text="Pasos/Comparaciones: 0", bg="#f0f0f0", font=("Arial", 12))
+        self.lbl_comparaciones.pack(side="left")
 
         # Área de Visualización (Canvas)
         self.canvas = tk.Canvas(self.root, bg="white", height=400)
         self.canvas.pack(fill="both", expand=True, padx=20, pady=20)
+
+    def cargar_datos_manuales(self):
+        texto = self.entry_datos.get()
+        if not texto:
+            messagebox.showwarning("Atención", "Ingresa una lista de números")
+            return
+        try:
+            self.lista_actual = [int(x.strip()) for x in texto.split(',')]
+            self.dibujar_lista(self.lista_actual, color_barras=None)
+        except ValueError:
+            messagebox.showerror("Error", "Formato inválido. Usa números enteros separados por comas (ej: 5,2,9,1).")
 
     def generar_datos(self):
         try:
@@ -125,6 +157,7 @@ class AppAlgoritmos:
         
         ancho_barra = c_width / len(lista)
         max_val = max(lista)
+        if max_val == 0: max_val = 1
         
         for i, valor in enumerate(lista):
             x0 = i * ancho_barra
@@ -139,14 +172,19 @@ class AppAlgoritmos:
                 color = f"#{intensidad:02x}90{255-intensidad:02x}" # Tono purpura/azulado a rojizo
 
             self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="white")
+            self.canvas.create_text((x0 + x1) / 2, y0 - 10, text=str(valor), fill="black", font=("Arial", 10))
 
     def ejecutar_animacion(self):
         nombre_alg = self.combo_algoritmo.get()
         alg = self.algoritmos[nombre_alg]
         
         if not self.lista_actual:
-            messagebox.showwarning("Atención", "Primero genera datos")
+            messagebox.showwarning("Atención", "Primero genera o carga datos")
             return
+
+        # Reiniciar contador
+        self.comparaciones = 0
+        self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
 
         # Obtener pasos
         alg.ordenar(self.lista_actual)
@@ -155,9 +193,15 @@ class AppAlgoritmos:
         # Función interna para animar paso a paso
         def animar(idx):
             if idx < len(pasos):
+                # Actualizar contador
+                self.comparaciones = idx + 1
+                self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
+                
                 # Dibujamos con diferentes colores en cada paso
                 self.dibujar_lista(pasos[idx], color_barras=None)
-                self.root.after(50, lambda: animar(idx + 1)) # Velocidad: 50ms de retraso (delay)
+                
+                velocidad = self.scale_velocidad.get()
+                self.root.after(velocidad, lambda: animar(idx + 1))
             else:
                 self.dibujar_lista(pasos[-1], color_barras="#4caf50") # Verde al finalizar
                 messagebox.showinfo("Listo", "Ordenamiento completado")
