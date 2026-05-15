@@ -1,14 +1,28 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import random
+import time
 from abc import ABC, abstractmethod
 from typing import List
+
+# --- LÓGICA DE ESTADÍSTICAS ---
+class ModuloEstadisticas:
+    def __init__(self):
+        self.tiempo_total = 0.0
+        self.comparaciones = 0
+        self.intercambios = 0
+
+    def reset(self):
+        self.tiempo_total = 0.0
+        self.comparaciones = 0
+        self.intercambios = 0
 
 # --- LÓGICA DE ALGORITMOS ---
 
 class Algoritmo(ABC):
     def __init__(self) -> None:
         self._pasos: List[List[int]] = []
+        self.estadisticas = ModuloEstadisticas()
 
     @abstractmethod
     def ordenar(self, lista: List[int]) -> List[int]:
@@ -92,23 +106,36 @@ class BubbleSort(Algoritmo):
         n = len(lista)
         lista_o = lista.copy()
         self._pasos = [] # Reiniciar pasos
+        self.estadisticas.reset()
         self.registrar_paso(lista_o.copy())
+        
+        inicio = time.perf_counter()
         for i in range(n):
             intercambiado = False
             for j in range(0, n - i - 1):
+                self.estadisticas.comparaciones += 1
                 if lista_o[j] > lista_o[j + 1]:
                     lista_o[j], lista_o[j + 1] = lista_o[j + 1], lista_o[j]
+                    self.estadisticas.intercambios += 1
                     intercambiado = True
                     self.registrar_paso(lista_o.copy())
             if not intercambiado: break
+        fin = time.perf_counter()
+        self.estadisticas.tiempo_total = fin - inicio
         return lista_o
 
 class QuickSort(Algoritmo):
     def ordenar(self, lista: List[int]) -> List[int]:
         lista_o = lista.copy()
         self._pasos = [] # Reiniciar pasos
+        self.estadisticas.reset()
         self.registrar_paso(lista_o.copy())
+        
+        inicio = time.perf_counter()
         self._quicksort(lista_o, 0, len(lista_o) - 1)
+        fin = time.perf_counter()
+        self.estadisticas.tiempo_total = fin - inicio
+        
         return lista_o
 
     def _quicksort(self, lista: List[int], low: int, high: int) -> None:
@@ -121,13 +148,16 @@ class QuickSort(Algoritmo):
         pivot = lista[high]
         i = low - 1
         for j in range(low, high):
+            self.estadisticas.comparaciones += 1
             if lista[j] < pivot:
                 i += 1
                 if i != j:
                     lista[i], lista[j] = lista[j], lista[i]
+                    self.estadisticas.intercambios += 1
                     self.registrar_paso(lista.copy())
         if i + 1 != high:
             lista[i + 1], lista[high] = lista[high], lista[i + 1]
+            self.estadisticas.intercambios += 1
             self.registrar_paso(lista.copy())
         return i + 1
 
@@ -135,20 +165,30 @@ class InsertionSort(Algoritmo):
     def ordenar(self, lista: List[int]) -> List[int]:
         lista_o = lista.copy()
         self._pasos = [] # Reiniciar pasos
+        self.estadisticas.reset()
         self.registrar_paso(lista_o.copy())
         
+        inicio = time.perf_counter()
         for i in range(1, len(lista_o)):
             key = lista_o[i]
             j = i - 1
             
-            while j >= 0 and lista_o[j] > key:
-                lista_o[j + 1] = lista_o[j]
-                self.registrar_paso(lista_o.copy())
-                j -= 1
+            while j >= 0:
+                self.estadisticas.comparaciones += 1
+                if lista_o[j] > key:
+                    lista_o[j + 1] = lista_o[j]
+                    self.estadisticas.intercambios += 1
+                    self.registrar_paso(lista_o.copy())
+                    j -= 1
+                else:
+                    break
                 
             lista_o[j + 1] = key
             self.registrar_paso(lista_o.copy())
             
+        fin = time.perf_counter()
+        self.estadisticas.tiempo_total = fin - inicio
+        
         return lista_o
 
 # --- INTERFAZ GRÁFICA ---
@@ -205,8 +245,11 @@ class AppAlgoritmos:
         # Panel para etiquetas
         panel_info = tk.Frame(self.root, bg="#f0f0f0")
         panel_info.pack(fill="x", padx=20)
-        self.lbl_comparaciones = tk.Label(panel_info, text="Pasos/Comparaciones: 0", bg="#f0f0f0", font=("Arial", 12))
+        self.lbl_comparaciones = tk.Label(panel_info, text="Pasos: 0", bg="#f0f0f0", font=("Arial", 12))
         self.lbl_comparaciones.pack(side="left")
+
+        self.lbl_estadisticas = tk.Label(panel_info, text="", bg="#f0f0f0", font=("Arial", 12), fg="#0055a4")
+        self.lbl_estadisticas.pack(side="right")
 
         # Área de Visualización (Canvas)
         self.canvas = tk.Canvas(self.root, bg="white", height=400)
@@ -234,7 +277,7 @@ class AppAlgoritmos:
         self.canvas.delete("all")
         if not lista: return
 
-        self.canvas.update_idletasks() # Asegurar dimensiones actualizadas
+        self.canvas.update_idletasks() # Asegurarr dimensiones actualizadas
         c_width = self.canvas.winfo_width()
         c_height = self.canvas.winfo_height()
         
@@ -273,9 +316,10 @@ class AppAlgoritmos:
             messagebox.showwarning("Atención", "Primero genera o carga datos")
             return
 
-        # Reiniciar contador
+        # Reiniciar el contador
         self.comparaciones = 0
-        self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
+        self.lbl_comparaciones.config(text=f"Pasos: {self.comparaciones}")
+        self.lbl_estadisticas.config(text="")
 
         if nombre_alg in self.algoritmos:
             alg = self.algoritmos[nombre_alg]
@@ -285,12 +329,14 @@ class AppAlgoritmos:
             def animar_ordenamiento(idx):
                 if idx < len(pasos):
                     self.comparaciones = idx + 1
-                    self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
+                    self.lbl_comparaciones.config(text=f"Pasos: {self.comparaciones}")
                     self.dibujar_lista(pasos[idx], color_barras=None)
                     velocidad = self.scale_velocidad.get()
                     self.root.after(velocidad, lambda: animar_ordenamiento(idx + 1))
                 else:
                     self.dibujar_lista(pasos[-1], color_barras="#4caf50")
+                    stats = alg.estadisticas
+                    self.lbl_estadisticas.config(text=f"Tiempo: {stats.tiempo_total:.6f} s | Comparaciones: {stats.comparaciones} | Swaps: {stats.intercambios}")
                     messagebox.showinfo("Listo", "Ordenamiento completado")
             animar_ordenamiento(0)
 
@@ -312,7 +358,7 @@ class AppAlgoritmos:
             def animar_busqueda(idx):
                 if idx < len(pasos):
                     self.comparaciones = idx + 1
-                    self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
+                    self.lbl_comparaciones.config(text=f"Pasos: {self.comparaciones}")
                     
                     estado_lista, resaltados, encontrado = pasos[idx]
                     self.dibujar_lista(estado_lista, color_barras=None, resaltados=resaltados, encontrado=encontrado if encontrado != -1 else None)
