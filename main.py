@@ -63,6 +63,24 @@ class BusquedaBinaria(AlgoritmoBusqueda):
         self.registrar_paso((lista_o.copy(), [], -1))
         return -1
 
+class BusquedaLineal(AlgoritmoBusqueda):
+    def buscar(self, lista: List[int], objetivo: int) -> int:
+        lista_o = lista.copy()
+        self._pasos = []
+        
+        for i in range(len(lista_o)):
+            # Resaltar elemento actual
+            self.registrar_paso((lista_o.copy(), [i], -1))
+            
+            if lista_o[i] == objetivo:
+                # Encontrado
+                self.registrar_paso((lista_o.copy(), [], i))
+                return i
+                
+        # No encontrado
+        self.registrar_paso((lista_o.copy(), [], -1))
+        return -1
+
 class GestorDatos:
     @staticmethod
     def generar_lista_aleatoria(tamano: int, bajo: int = 1, alto: int = 100) -> List[int]:
@@ -144,7 +162,7 @@ class AppAlgoritmos:
 
         self.lista_actual = []
         self.algoritmos = {"Bubble Sort": BubbleSort(), "Quick Sort": QuickSort(), "Insertion Sort": InsertionSort()}
-        self.algoritmos_busqueda = {"Búsqueda Binaria": BusquedaBinaria()}
+        self.algoritmos_busqueda = {"Búsqueda Binaria": BusquedaBinaria(), "Búsqueda Lineal": BusquedaLineal()}
         self.comparaciones = 0
 
         self._crear_interfaz()
@@ -241,7 +259,7 @@ class AppAlgoritmos:
                 color = f"#{intensidad:02x}90{255-intensidad:02x}" # Tono purpura/azulado a rojizo
 
             if resaltados and i in resaltados:
-                color = "yellow"
+                color = "red"
             if encontrado is not None and i == encontrado:
                 color = "#4caf50" # Verde para el encontrado
 
