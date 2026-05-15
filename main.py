@@ -20,6 +20,49 @@ class Algoritmo(ABC):
     def registrar_paso(self, paso: List[int]) -> None:
         self._pasos.append(paso)
 
+class AlgoritmoBusqueda(ABC):
+    def __init__(self) -> None:
+        # Los pasos guardan una tupla: (estado_lista, indices_comparados, indice_encontrado_o_menos1)
+        self._pasos: List[tuple] = []
+
+    @abstractmethod
+    def buscar(self, lista: List[int], objetivo: int) -> int:
+        pass
+
+    def obtener_pasos(self) -> List[tuple]:
+        return self._pasos
+
+    def registrar_paso(self, paso: tuple) -> None:
+        self._pasos.append(paso)
+
+class BusquedaBinaria(AlgoritmoBusqueda):
+    def buscar(self, lista: List[int], objetivo: int) -> int:
+        lista_o = lista.copy()
+        lista_o.sort() # La búsqueda binaria requiere una lista ordenada
+        self._pasos = []
+        
+        low = 0
+        high = len(lista_o) - 1
+        
+        while low <= high:
+            mid = (low + high) // 2
+            
+            # Resaltar límites y pivote actual
+            self.registrar_paso((lista_o.copy(), [low, mid, high], -1))
+            
+            if lista_o[mid] == objetivo:
+                # Encontrado
+                self.registrar_paso((lista_o.copy(), [], mid))
+                return mid
+            elif lista_o[mid] < objetivo:
+                low = mid + 1
+            else:
+                high = mid - 1
+                
+        # No encontrado
+        self.registrar_paso((lista_o.copy(), [], -1))
+        return -1
+
 class GestorDatos:
     @staticmethod
     def generar_lista_aleatoria(tamano: int, bajo: int = 1, alto: int = 100) -> List[int]:
@@ -101,6 +144,7 @@ class AppAlgoritmos:
 
         self.lista_actual = []
         self.algoritmos = {"Bubble Sort": BubbleSort(), "Quick Sort": QuickSort(), "Insertion Sort": InsertionSort()}
+        self.algoritmos_busqueda = {"Búsqueda Binaria": BusquedaBinaria()}
         self.comparaciones = 0
 
         self._crear_interfaz()
@@ -111,9 +155,14 @@ class AppAlgoritmos:
         panel_control.pack(fill="x")
 
         tk.Label(panel_control, text="Algoritmo:", bg="#dcdcdc").pack(side="left", padx=5)
-        self.combo_algoritmo = ttk.Combobox(panel_control, values=list(self.algoritmos.keys()), width=12)
+        self.combo_algoritmo = ttk.Combobox(panel_control, values=list(self.algoritmos.keys()) + list(self.algoritmos_busqueda.keys()), width=15)
         self.combo_algoritmo.pack(side="left", padx=5)
         self.combo_algoritmo.current(0)
+
+        # Entrada para el objetivo de búsqueda
+        tk.Label(panel_control, text="Objetivo:", bg="#dcdcdc").pack(side="left", padx=2)
+        self.entry_objetivo = tk.Entry(panel_control, width=5)
+        self.entry_objetivo.pack(side="left", padx=2)
 
         # Entrada de datos manual
         tk.Label(panel_control, text="Datos (comas):", bg="#dcdcdc").pack(side="left", padx=2)
@@ -163,7 +212,7 @@ class AppAlgoritmos:
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-    def dibujar_lista(self, lista, color_barras=None):
+    def dibujar_lista(self, lista, color_barras=None, resaltados=None, encontrado=None):
         self.canvas.delete("all")
         if not lista: return
 
@@ -191,12 +240,16 @@ class AppAlgoritmos:
                 intensidad = int((valor / max_val) * 200) + 55 # 55 a 255
                 color = f"#{intensidad:02x}90{255-intensidad:02x}" # Tono purpura/azulado a rojizo
 
+            if resaltados and i in resaltados:
+                color = "yellow"
+            if encontrado is not None and i == encontrado:
+                color = "#4caf50" # Verde para el encontrado
+
             self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="white")
             self.canvas.create_text((x0 + x1) / 2, y0 - 10, text=str(valor), fill="black", font=("Arial", 10))
 
     def ejecutar_animacion(self):
         nombre_alg = self.combo_algoritmo.get()
-        alg = self.algoritmos[nombre_alg]
         
         if not self.lista_actual:
             messagebox.showwarning("Atención", "Primero genera o carga datos")
@@ -206,27 +259,56 @@ class AppAlgoritmos:
         self.comparaciones = 0
         self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
 
-        # Obtener pasos
-        alg.ordenar(self.lista_actual)
-        pasos = alg.obtener_pasos()
+        if nombre_alg in self.algoritmos:
+            alg = self.algoritmos[nombre_alg]
+            alg.ordenar(self.lista_actual)
+            pasos = alg.obtener_pasos()
 
-        # Función interna para animar paso a paso
-        def animar(idx):
-            if idx < len(pasos):
-                # Actualizar contador
-                self.comparaciones = idx + 1
-                self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
-                
-                # Dibujamos con diferentes colores en cada paso
-                self.dibujar_lista(pasos[idx], color_barras=None)
-                
-                velocidad = self.scale_velocidad.get()
-                self.root.after(velocidad, lambda: animar(idx + 1))
-            else:
-                self.dibujar_lista(pasos[-1], color_barras="#4caf50") # Verde al finalizar
-                messagebox.showinfo("Listo", "Ordenamiento completado")
+            def animar_ordenamiento(idx):
+                if idx < len(pasos):
+                    self.comparaciones = idx + 1
+                    self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
+                    self.dibujar_lista(pasos[idx], color_barras=None)
+                    velocidad = self.scale_velocidad.get()
+                    self.root.after(velocidad, lambda: animar_ordenamiento(idx + 1))
+                else:
+                    self.dibujar_lista(pasos[-1], color_barras="#4caf50")
+                    messagebox.showinfo("Listo", "Ordenamiento completado")
+            animar_ordenamiento(0)
 
-        animar(0)
+        elif nombre_alg in self.algoritmos_busqueda:
+            try:
+                objetivo = int(self.entry_objetivo.get().strip())
+            except ValueError:
+                messagebox.showwarning("Atención", "Ingresa un número válido en 'Objetivo' para buscar")
+                return
+
+            alg = self.algoritmos_busqueda[nombre_alg]
+            
+            # Aseguramos que la lista original y actual estén ordenadas visualmente
+            self.lista_actual.sort()
+            
+            alg.buscar(self.lista_actual, objetivo)
+            pasos = alg.obtener_pasos()
+
+            def animar_busqueda(idx):
+                if idx < len(pasos):
+                    self.comparaciones = idx + 1
+                    self.lbl_comparaciones.config(text=f"Pasos/Comparaciones: {self.comparaciones}")
+                    
+                    estado_lista, resaltados, encontrado = pasos[idx]
+                    self.dibujar_lista(estado_lista, color_barras=None, resaltados=resaltados, encontrado=encontrado if encontrado != -1 else None)
+                    
+                    velocidad = self.scale_velocidad.get()
+                    self.root.after(velocidad, lambda: animar_busqueda(idx + 1))
+                else:
+                    _, _, encontrado = pasos[-1]
+                    if encontrado != -1:
+                        messagebox.showinfo("Listo", f"Elemento encontrado en el índice {encontrado}")
+                    else:
+                        messagebox.showinfo("Listo", "Elemento no encontrado en la lista")
+
+            animar_busqueda(0)
 
 if __name__ == "__main__":
     root = tk.Tk()
